@@ -1,6 +1,7 @@
 import { DirectMessageAdapter, DID, LanguageContext, MessageCallback, Perspective, PerspectiveExpression, StatusCallback } from "@perspect3vism/ad4m";
 import { DNA_NICK } from "./dna";
 
+const DID = "<not templated yet>"
 export default class DMAdapter extends DirectMessageAdapter {
 
   constructor(context: LanguageContext) {
@@ -8,15 +9,15 @@ export default class DMAdapter extends DirectMessageAdapter {
   }
 
   recipient(): DID{
-
+    return DID
   }
 
-  status(timeout: number): Promise<PerspectiveExpression | void> {
-
+  async status(timeout: number): Promise<PerspectiveExpression | void> {
+    return null
   }
 
-  sendP2P(message: Perspective): Promise<boolean> {
-
+  async sendP2P(message: Perspective): Promise<boolean> {
+    return false
   }
 
   sendInbox(message: Perspective) {

@@ -1,11 +1,5 @@
-use hdk::prelude::*;
 use chrono::{DateTime, Utc};
-
-#[derive(Clone, Serialize, Deserialize, SerializedBytes, Debug)]
-pub struct ExpressionProof {
-    pub signature: String,
-    pub key: String
-}
+use hdk::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug)]
 pub struct Link {
@@ -41,15 +35,3 @@ pub struct PerspectiveExpression {
     pub data: Perspective,
     pub proof: ExpressionProof
 }
-
-entry_defs![
-    Path::entry_def(),
-    PerspectiveExpression::entry_def()
-];
-
-#[hdk_extern]
-pub fn send(message: PerspectiveExpression) -> ExternResult<()> {
-    
-    Ok(())
-}
-

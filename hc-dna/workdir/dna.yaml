@@ -2,7 +2,8 @@
 manifest_version: 1
 name: "direct-message-language"
 uuid: 00000000-0000-0000-0000-000000000000
-properties: {}
+properties: 
+  - recipient_hc_agent_pubkey: "needs replacement through templating"
 zomes: 
-  - name: dm
-    bundled: ../target/wasm32-unknown-unknown/release/dm.wasm
+  - name: direct-message
+    bundled: ../target/wasm32-unknown-unknown/release/direct_message.wasm

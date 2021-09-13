@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@holochain/tryorama": "0.4.2",
+    "@holochain/tryorama": "https://github.com/holochain/tryorama.git#3970c375e5f48bbf520e8ec906fb37f1ee29c35e",
     "@perspect3vism/ad4m": "0.1.16",
     "@types/lodash": "^4.14.158",
     "@types/node": "^14.0.14",

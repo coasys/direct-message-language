@@ -1,7 +1,7 @@
 hc-dna/.cargo
 hc-dna/target
 hc-dna/tests/node_modules
-hc-dna/workdir/languages.dna
+hc-dna/workdir/direct-message-language.dna
 
 build/*
 

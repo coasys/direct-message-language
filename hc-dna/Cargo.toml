@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "zomes/anchored-expression"
+  "zomes/direct-message"
 ]
 
 [profile.dev]

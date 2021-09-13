@@ -3,17 +3,6 @@
 version = 3
 
 [[package]]
-name = "anchored-expression"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "derive_more",
- "hdk",
- "holo_hash",
- "serde",
-]
-
-[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -119,6 +108,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "direct-message"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "derive_more",
+ "hdk",
+ "holo_hash",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
