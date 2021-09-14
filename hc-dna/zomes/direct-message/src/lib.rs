@@ -75,8 +75,5 @@ fn recipient() -> ExternResult<AgentPubKey> {
 pub fn send(message: PerspectiveExpression) -> ExternResult<()> {
     debug!("SENDING MESSAGE...");
     remote_signal(SerializedBytes::try_from(MessageWrapper::DirectMessage(message))?, vec![recipient()?])
-    //let mut agents = Vec::new();
-    //agents.push(recipient()?);
-    //remote_signal(String::from("asdf"), agents)
 }
 

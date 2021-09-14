@@ -26,12 +26,6 @@ pub fn get_test_recipient(_: ()) -> ExternResult<Option<Recipient>> {
     if let Some(element) = query(filter)?.pop() {
         let recipient = Recipient::try_from(element)?;
                 return Ok(Some(recipient));
-        //if let ElementEntry::Present(entry) = element.entry() {
-            
-            //if let Entry::App(bytes) = entry {    
-            //}
-        //}
     }
     return Ok(None)
-    //Ok(())
 }
