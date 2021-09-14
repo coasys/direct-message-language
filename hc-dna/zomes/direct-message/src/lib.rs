@@ -24,6 +24,16 @@ impl Into<PerspectiveExpression> for StatusUpdate {
     }
 }
 
+#[hdk_entry(id = "message", visibility = "private")]
+#[derive(Clone)]
+pub struct StoredMessage(PerspectiveExpression);
+
+impl Into<PerspectiveExpression> for StoredMessage {
+    fn into(self) -> PerspectiveExpression {
+        self.0
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, SerializedBytes)]
 pub struct Properties {
     pub recipient_hc_agent_pubkey: AgentPubKey,
@@ -39,7 +49,8 @@ entry_defs![
     Path::entry_def(),
     PerspectiveExpression::entry_def(),
     Recipient::entry_def(),
-    StatusUpdate::entry_def()
+    StatusUpdate::entry_def(),
+    StoredMessage::entry_def()
 ];
 
 #[hdk_extern]
@@ -59,21 +70,6 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
     Ok(InitCallbackResult::Pass)
 }
 
-#[hdk_extern]
-fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
-    debug!("RECEIVEING MESSAGE...");
-    //debug!("{}", String::from(signal));
-    emit_signal(String::from("recv_remote_signal"))?;
-    match MessageWrapper::try_from(signal)? {
-        MessageWrapper::StatusRequest => Err(WasmError::Guest(String::from("StatusRequest not implemented"))),
-        MessageWrapper::StatusResponse(_message) => Err(WasmError::Guest(String::from("StatusResponse not implemented"))),
-        MessageWrapper::DirectMessage(message) => {
-            let json = serde_json::to_string(&message).unwrap();
-            Ok(emit_signal(&SerializedBytes::try_from(Signal{json})?)?)
-        }
-    }
-}
-
 fn recipient() -> ExternResult<AgentPubKey> {
     if let Some(recipient) = get_test_recipient(())? {
         Ok(recipient.get())
@@ -83,11 +79,9 @@ fn recipient() -> ExternResult<AgentPubKey> {
     }
 }
 
-#[hdk_extern]
-pub fn send(message: PerspectiveExpression) -> ExternResult<()> {
-    debug!("SENDING MESSAGE...");
-    remote_signal(SerializedBytes::try_from(MessageWrapper::DirectMessage(message))?, vec![recipient()?])
-}
+//---------------------------------------------------------
+//----Status-----------------------------------------------
+//---------------------------------------------------------
 
 #[hdk_extern]
 pub fn set_status(new_status: PerspectiveExpression) -> ExternResult<()> {
@@ -126,3 +120,48 @@ pub fn get_status(_: ()) -> ExternResult<Option<PerspectiveExpression>> {
         }
     }
 }
+
+
+//---------------------------------------------------------
+//----Messages---------------------------------------------
+//---------------------------------------------------------
+
+
+#[hdk_extern]
+fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
+    debug!("RECEIVEING MESSAGE...");
+    match PerspectiveExpression::try_from(signal) {
+        Ok(message) => {
+            let json = serde_json::to_string(&message).unwrap();
+            emit_signal(&SerializedBytes::try_from(Signal{json})?)?;
+            create_entry(StoredMessage(message))?;
+            Ok(())
+        },
+        Err(error) => {
+            let error_message = format!("Received signal that does not parse to PerspectiveExpression: {}", error);
+            debug!("Error in recv_remote_sigal: {}", error_message);
+            Err(WasmError::Guest(String::from(error_message)))
+        }
+    }
+}
+
+#[hdk_extern]
+fn inbox(_: ()) -> ExternResult<Vec<PerspectiveExpression>> {
+    let mut filter = QueryFilter::new();
+    filter.entry_type = Some(entry_type!(StoredMessage)?);
+    filter.include_entries = true;
+    Ok(query(filter)?
+        .iter()
+        .filter_map(|m| PerspectiveExpression::try_from(m).ok())
+        .collect()
+    )
+}
+
+
+
+#[hdk_extern]
+pub fn send(message: PerspectiveExpression) -> ExternResult<()> {
+    debug!("SENDING MESSAGE...");
+    remote_signal(SerializedBytes::try_from(message)?, vec![recipient()?])
+}
+

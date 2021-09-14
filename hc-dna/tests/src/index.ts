@@ -82,6 +82,10 @@ orchestrator.registerScenario("send direct message", async (s, t) => {
 
   t.deepEqual(alice_last_signal, expression)
 
+  const inbox = await alice_dm.cells[0].call(ZOME, "inbox")
+  t.equal(inbox.length, 1)
+  t.deepEqual(inbox[0], expression)
+
 
   // ------------
   // Status:
