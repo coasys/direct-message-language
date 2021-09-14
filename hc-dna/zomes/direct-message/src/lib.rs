@@ -34,6 +34,16 @@ impl Into<PerspectiveExpression> for StoredMessage {
     }
 }
 
+#[hdk_entry(id = "message", visibility = "public")]
+#[derive(Clone)]
+pub struct PublicMessage(PerspectiveExpression);
+
+impl Into<PerspectiveExpression> for PublicMessage {
+    fn into(self) -> PerspectiveExpression {
+        self.0
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, SerializedBytes)]
 pub struct Properties {
     pub recipient_hc_agent_pubkey: AgentPubKey,
@@ -160,8 +170,63 @@ fn inbox(_: ()) -> ExternResult<Vec<PerspectiveExpression>> {
 
 
 #[hdk_extern]
-pub fn send(message: PerspectiveExpression) -> ExternResult<()> {
+pub fn send_p2p(message: PerspectiveExpression) -> ExternResult<()> {
     debug!("SENDING MESSAGE...");
     remote_signal(SerializedBytes::try_from(message)?, vec![recipient()?])
 }
 
+fn inbox_hash() -> ExternResult<EntryHash> {
+    let path = Path::from("inbox");
+    path.ensure()?;
+    Ok(path.hash()?)
+}
+
+#[hdk_extern]
+pub fn send_inbox(message: PerspectiveExpression) -> ExternResult<()> {
+    let entry = PublicMessage(message);
+    let entry_hash = hash_entry(&entry)?;
+    create_entry(entry)?;
+    create_link(inbox_hash()?, entry_hash, ())?;
+    debug!("Link created");
+    debug!("inbox_hash: {}", inbox_hash()?);
+    Ok(())
+}
+
+#[hdk_extern]
+pub fn fetch_inbox(_: ()) -> ExternResult<()> {
+    debug!("fetch_inbox");
+    if agent_info()?.agent_latest_pubkey == recipient()? {
+        debug!("fetch_inbox agent");
+        debug!("inbox_hash: {}", inbox_hash()?);
+        for link in get_links(inbox_hash()?, None)?.into_inner() {
+            debug!("fetch_inbox link");
+            if let Some(message_entry) = get(link.target, GetOptions::latest())? {
+                debug!("fetch_inbox link got");
+                let header_address = message_entry.header_address().clone();
+                let public_message = PublicMessage::try_from(message_entry)?;
+                let message: PerspectiveExpression = public_message.into();
+                create_entry(StoredMessage(message))?;
+                delete_link(link.create_link_hash)?;
+                delete_entry(header_address)?;
+            } else {
+                error!("Message linked in inbox not retrievable")
+            }
+        }
+        Ok(())
+    } else {
+        Err(WasmError::Guest(String::from("Only recipient can fetch the inbox")))
+    }
+}
+
+#[hdk_extern]
+fn validate_delete_link(
+    validate_delete_link: ValidateDeleteLinkData,
+) -> ExternResult<ValidateLinkCallbackResult> {
+    let delete_link = validate_delete_link.delete_link;
+    let recipient = recipient()?;
+    if delete_link.author == recipient {
+        Ok(ValidateLinkCallbackResult::Valid)
+    } else {
+        Ok(ValidateLinkCallbackResult::Invalid("Only recipient is allowed to delete inbox links".to_string()),)
+    }
+}

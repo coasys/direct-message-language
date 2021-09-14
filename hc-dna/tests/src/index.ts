@@ -56,11 +56,14 @@ orchestrator.registerScenario("send direct message", async (s, t) => {
   // ----------------------------------------------
 
 
-  // ------------
-  // P2P Message:
+    // ------------
+  // Status:
   // ------------
 
-  const expression = {
+  const empty_status = await alice_dm.cells[0].call(ZOME, "get_status");
+  console.log("EMPTY status:", empty_status)
+
+  const status = {
     author: "did:test:test",
     timestamp: new Date().toISOString(),
     data: {
@@ -71,28 +74,6 @@ orchestrator.registerScenario("send direct message", async (s, t) => {
       key: "did:test:test#primary"
     }
   }
-
-  await bob_dm.cells[0].call(
-    ZOME,
-    "send",
-    expression
-  );
-
-  await sleep(1000)
-
-  t.deepEqual(alice_last_signal, expression)
-
-  const inbox = await alice_dm.cells[0].call(ZOME, "inbox")
-  t.equal(inbox.length, 1)
-  t.deepEqual(inbox[0], expression)
-
-
-  // ------------
-  // Status:
-  // ------------
-
-  const empty_status = await alice_dm.cells[0].call(ZOME, "get_status");
-  console.log("EMPTY status:", empty_status)
 
   const link = {
     author: "did:test:test",
@@ -108,13 +89,70 @@ orchestrator.registerScenario("send direct message", async (s, t) => {
     }
   } as LinkExpression
 
-  expression.data.links.push(link)
+  status.data.links.push(link)
 
-  await alice_dm.cells[0].call(ZOME, "set_status", expression)
-  t.deepEqual(await alice_dm.cells[0].call(ZOME, "get_status"), expression)
-  t.deepEqual(await bob_dm.cells[0].call(ZOME, "get_status"), expression)
 
-  
+  await alice_dm.cells[0].call(ZOME, "set_status", status)
+  t.deepEqual(await alice_dm.cells[0].call(ZOME, "get_status"), status)
+  t.deepEqual(await bob_dm.cells[0].call(ZOME, "get_status"), status)
+
+  // ------------
+  // P2P Message:
+  // ------------
+
+  const message1 = {
+    author: "did:test:test",
+    timestamp: new Date().toISOString(),
+    data: {
+      links: [] as LinkExpression[],
+    },
+    proof: {
+      signature: "asdfasdfasdf",
+      key: "did:test:test#primary"
+    }
+  }
+
+  await bob_dm.cells[0].call(ZOME, "send_p2p", message1);
+  await sleep(1000)
+
+  t.deepEqual(alice_last_signal, message1)
+
+  let inbox = await alice_dm.cells[0].call(ZOME, "inbox")
+  t.equal(inbox.length, 1)
+  t.deepEqual(inbox[0], message1)
+
+
+
+  // --------------
+  // Inbox Message:
+  // --------------
+
+  const message2 = JSON.parse(JSON.stringify(message1))
+  message2.data.links.push(link)
+
+  console.log("send_inbox:", await bob_dm.cells[0].call(ZOME, "send_inbox", message2))
+
+  await sleep(6000)
+
+  inbox = await alice_dm.cells[0].call(ZOME, "inbox")
+  t.equal(inbox.length, 1)
+  t.deepEqual(inbox[0], message1)
+
+  let bobFetchError
+  try {
+    await bob_dm.cells[0].call(ZOME, "fetch_inbox")
+  } catch(e) {
+    bobFetchError = e
+  }
+  t.equal(bobFetchError.data.data, 'Wasm error while working with Ribosome: Guest("Only recipient can fetch the inbox")')
+
+  console.log("fetch_inbox Alice:", await alice_dm.cells[0].call(ZOME, "fetch_inbox"))
+
+  inbox = await alice_dm.cells[0].call(ZOME, "inbox")
+  t.equal(inbox.length, 2)
+  t.deepEqual(inbox[0], message1)
+  t.deepEqual(inbox[1], message2)
+
 });
 
 orchestrator.run();
