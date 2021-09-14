@@ -132,7 +132,7 @@ orchestrator.registerScenario("send direct message", async (s, t) => {
 
   console.log("send_inbox:", await bob_dm.cells[0].call(ZOME, "send_inbox", message2))
 
-  await sleep(6000)
+  await sleep(1000)
 
   inbox = await alice_dm.cells[0].call(ZOME, "inbox")
   t.equal(inbox.length, 1)

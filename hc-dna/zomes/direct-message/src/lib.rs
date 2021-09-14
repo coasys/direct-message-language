@@ -6,13 +6,6 @@ use ad4m::PerspectiveExpression;
 use test_inspect::Recipient;
 use test_inspect::get_test_recipient;
 
-#[hdk_entry(id = "message_wrapper", visibility = "private")]
-#[derive(Clone)]
-enum MessageWrapper {
-    StatusRequest,
-    StatusResponse(PerspectiveExpression),
-    DirectMessage(PerspectiveExpression)
-}
 
 #[hdk_entry(id = "status_update", visibility = "private")]
 #[derive(Clone)]
@@ -24,7 +17,7 @@ impl Into<PerspectiveExpression> for StatusUpdate {
     }
 }
 
-#[hdk_entry(id = "message", visibility = "private")]
+#[hdk_entry(id = "stored_message", visibility = "private")]
 #[derive(Clone)]
 pub struct StoredMessage(PerspectiveExpression);
 
@@ -34,7 +27,7 @@ impl Into<PerspectiveExpression> for StoredMessage {
     }
 }
 
-#[hdk_entry(id = "message", visibility = "public")]
+#[hdk_entry(id = "public_message", visibility = "public")]
 #[derive(Clone)]
 pub struct PublicMessage(PerspectiveExpression);
 
@@ -60,7 +53,8 @@ entry_defs![
     PerspectiveExpression::entry_def(),
     Recipient::entry_def(),
     StatusUpdate::entry_def(),
-    StoredMessage::entry_def()
+    StoredMessage::entry_def(),
+    PublicMessage::entry_def()
 ];
 
 #[hdk_extern]
@@ -175,30 +169,27 @@ pub fn send_p2p(message: PerspectiveExpression) -> ExternResult<()> {
     remote_signal(SerializedBytes::try_from(message)?, vec![recipient()?])
 }
 
-fn inbox_hash() -> ExternResult<EntryHash> {
-    let path = Path::from("inbox");
-    path.ensure()?;
-    Ok(path.hash()?)
-}
-
 #[hdk_extern]
 pub fn send_inbox(message: PerspectiveExpression) -> ExternResult<()> {
     let entry = PublicMessage(message);
     let entry_hash = hash_entry(&entry)?;
     create_entry(entry)?;
-    create_link(inbox_hash()?, entry_hash, ())?;
+    create_link(recipient()?.into(), entry_hash, LinkTag::new(String::from("message")))?;
     debug!("Link created");
-    debug!("inbox_hash: {}", inbox_hash()?);
+    let agent_address: EntryHash = recipient()?.into();
+
+    debug!("agent_address: {}", agent_address);
     Ok(())
 }
 
 #[hdk_extern]
 pub fn fetch_inbox(_: ()) -> ExternResult<()> {
+    let agent_address: EntryHash = recipient()?.into();
     debug!("fetch_inbox");
     if agent_info()?.agent_latest_pubkey == recipient()? {
         debug!("fetch_inbox agent");
-        debug!("inbox_hash: {}", inbox_hash()?);
-        for link in get_links(inbox_hash()?, None)?.into_inner() {
+        debug!("agent_address: {}", agent_address);
+        for link in get_links(agent_address, Some(LinkTag::new(String::from("message"))))?.into_inner() {
             debug!("fetch_inbox link");
             if let Some(message_entry) = get(link.target, GetOptions::latest())? {
                 debug!("fetch_inbox link got");
@@ -218,6 +209,7 @@ pub fn fetch_inbox(_: ()) -> ExternResult<()> {
     }
 }
 
+/*
 #[hdk_extern]
 fn validate_delete_link(
     validate_delete_link: ValidateDeleteLinkData,
@@ -230,3 +222,4 @@ fn validate_delete_link(
         Ok(ValidateLinkCallbackResult::Invalid("Only recipient is allowed to delete inbox links".to_string()),)
     }
 }
+ */
