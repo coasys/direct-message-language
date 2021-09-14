@@ -1,5 +1,5 @@
 import { Orchestrator, Config, InstallAgentsHapps, TransportConfigType } from "@holochain/tryorama";
-import { Perspective } from "@perspect3vism/ad4m"
+import { LinkExpression, Perspective } from "@perspect3vism/ad4m"
 import path from "path";
 
 export const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -51,11 +51,20 @@ orchestrator.registerScenario("send direct message", async (s, t) => {
   const stored_recipient = await bob_dm.cells[0].call(ZOME, "get_test_recipient");
   t.equal(stored_recipient.toString(), alice_agent_pubkey.toString())
 
+  // ----------------------------------------------
+  // ------------- Setup done ---------------------
+  // ----------------------------------------------
+
+
+  // ------------
+  // P2P Message:
+  // ------------
+
   const expression = {
     author: "did:test:test",
     timestamp: new Date().toISOString(),
     data: {
-      links: []
+      links: [] as LinkExpression[],
     },
     proof: {
       signature: "asdfasdfasdf",
@@ -71,9 +80,37 @@ orchestrator.registerScenario("send direct message", async (s, t) => {
 
   await sleep(1000)
 
-  console.log(alice_last_signal)
-  console.log(expression)
   t.deepEqual(alice_last_signal, expression)
+
+
+  // ------------
+  // Status:
+  // ------------
+
+  const empty_status = await alice_dm.cells[0].call(ZOME, "get_status");
+  console.log("EMPTY status:", empty_status)
+
+  const link = {
+    author: "did:test:test",
+    timestamp: new Date().toISOString(),
+    data: {
+      source: "did:test:test",
+      target: "literal://string:online",
+      predicate: null,
+    },
+    proof: {
+      signature: "asdfasdfasdf",
+      key: "did:test:test#primary"
+    }
+  } as LinkExpression
+
+  expression.data.links.push(link)
+
+  await alice_dm.cells[0].call(ZOME, "set_status", expression)
+  t.deepEqual(await alice_dm.cells[0].call(ZOME, "get_status"), expression)
+  t.deepEqual(await bob_dm.cells[0].call(ZOME, "get_status"), expression)
+
+  
 });
 
 orchestrator.run();
