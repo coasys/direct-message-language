@@ -39,7 +39,7 @@ impl Into<PerspectiveExpression> for PublicMessage {
 
 #[derive(Serialize, Deserialize, Debug, SerializedBytes)]
 pub struct Properties {
-    pub recipient_hc_agent_pubkey: AgentPubKey,
+    pub recipient_hc_agent_pubkey: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, SerializedBytes)]
@@ -79,7 +79,12 @@ fn recipient() -> ExternResult<AgentPubKey> {
         Ok(recipient.get())
     } else {
         let properties = Properties::try_from(zome_info()?.properties)?;
-        Ok(properties.recipient_hc_agent_pubkey)
+        let bytes = hex::decode(properties.recipient_hc_agent_pubkey)
+            .or_else(|_| Err(WasmError::Guest(String::from("Could not hex-decode property"))))?;
+        Ok(
+            AgentPubKey::from_raw_39(bytes)
+                .or_else(|_| Err(WasmError::Guest(String::from("Could not decode property as AgentPubKey"))))?
+        )
     }
 }
 
