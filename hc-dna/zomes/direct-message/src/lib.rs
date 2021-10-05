@@ -59,7 +59,7 @@ entry_defs![
 
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
-    debug!("INIT called");
+    //debug!("INIT called");
     let mut functions: GrantedFunctions = BTreeSet::new();
     functions.insert((zome_info()?.zome_name, "recv_remote_signal".into()));
     functions.insert((zome_info()?.zome_name, "get_status".into()));
@@ -75,12 +75,16 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
 }
 
 fn recipient() -> ExternResult<AgentPubKey> {
+    //debug!("RECIPIENT");
     if let Some(recipient) = get_test_recipient(())? {
+        //debug!("TEST RECIPIENT");
         Ok(recipient.get())
     } else {
+        //debug!("RECIPIENT from properties");
         let properties = Properties::try_from(zome_info()?.properties)?;
         let bytes = hex::decode(properties.recipient_hc_agent_pubkey)
             .or_else(|_| Err(WasmError::Guest(String::from("Could not hex-decode property"))))?;
+        //debug!("RECIPIENT hex decoded");
         Ok(
             AgentPubKey::from_raw_39(bytes)
                 .or_else(|_| Err(WasmError::Guest(String::from("Could not decode property as AgentPubKey"))))?
@@ -104,6 +108,7 @@ pub fn set_status(new_status: PerspectiveExpression) -> ExternResult<()> {
 
 #[hdk_extern]
 pub fn get_status(_: ()) -> ExternResult<Option<PerspectiveExpression>> {
+    //debug!("GET STATUS");
     if agent_info()?.agent_latest_pubkey == recipient()? {
         // If called on the recipient node 
         // (either from local ad4m-executor or via remote_call)
@@ -155,13 +160,26 @@ fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
 }
 
 #[hdk_extern]
-fn inbox(_: ()) -> ExternResult<Vec<PerspectiveExpression>> {
+fn inbox(did_filter: Option<String>) -> ExternResult<Vec<PerspectiveExpression>> {
+    //debug!("INBOX({:?})", did_filter);
     let mut filter = QueryFilter::new();
     filter.entry_type = Some(entry_type!(StoredMessage)?);
     filter.include_entries = true;
     Ok(query(filter)?
         .iter()
         .filter_map(|m| PerspectiveExpression::try_from(m).ok())
+        .filter_map(|m| {
+            match &did_filter {
+                None => Some(m),
+                Some(did) => {
+                    if &m.author == did {
+                        Some(m)
+                    } else {
+                        None
+                    }
+                }
+            }
+        })
         .collect()
     )
 }
@@ -170,34 +188,32 @@ fn inbox(_: ()) -> ExternResult<Vec<PerspectiveExpression>> {
 
 #[hdk_extern]
 pub fn send_p2p(message: PerspectiveExpression) -> ExternResult<()> {
-    debug!("SENDING MESSAGE...");
+    //debug!("SENDING MESSAGE...");
     remote_signal(SerializedBytes::try_from(message)?, vec![recipient()?])
 }
 
 #[hdk_extern]
 pub fn send_inbox(message: PerspectiveExpression) -> ExternResult<()> {
+    //debug!("SEND INBOX");
     let entry = PublicMessage(message);
     let entry_hash = hash_entry(&entry)?;
     create_entry(entry)?;
     create_link(recipient()?.into(), entry_hash, LinkTag::new(String::from("message")))?;
-    debug!("Link created");
-    let agent_address: EntryHash = recipient()?.into();
-
-    debug!("agent_address: {}", agent_address);
+    //debug!("Link created");
     Ok(())
 }
 
 #[hdk_extern]
 pub fn fetch_inbox(_: ()) -> ExternResult<()> {
     let agent_address: EntryHash = recipient()?.into();
-    debug!("fetch_inbox");
+    //debug!("fetch_inbox");
     if agent_info()?.agent_latest_pubkey == recipient()? {
-        debug!("fetch_inbox agent");
-        debug!("agent_address: {}", agent_address);
+        //debug!("fetch_inbox agent");
+        //debug!("agent_address: {}", agent_address);
         for link in get_links(agent_address, Some(LinkTag::new(String::from("message"))))?.into_inner() {
-            debug!("fetch_inbox link");
+            //debug!("fetch_inbox link");
             if let Some(message_entry) = get(link.target, GetOptions::latest())? {
-                debug!("fetch_inbox link got");
+                //debug!("fetch_inbox link got");
                 let header_address = message_entry.header_address().clone();
                 let public_message = PublicMessage::try_from(message_entry)?;
                 let message: PerspectiveExpression = public_message.into();

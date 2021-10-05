@@ -69,10 +69,10 @@ export default class DMAdapter implements DirectMessageAdapter {
     await this.#holochain.call(DNA_NICK, "direct-message", "set_status", statusExpression)
   }
 
-  async inbox(): Promise<PerspectiveExpression[]> {
+  async inbox(filter?: string): Promise<PerspectiveExpression[]> {
     this.onlyRecipient()
     await this.#holochain.call(DNA_NICK, "direct-message", "fetch_inbox", null)
-    return await this.#holochain.call(DNA_NICK, "direct-message", "inbox", null)
+    return await this.#holochain.call(DNA_NICK, "direct-message", "inbox", filter)
   }
 
   addMessageCallback(callback: MessageCallback) {

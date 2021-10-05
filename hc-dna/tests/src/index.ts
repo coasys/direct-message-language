@@ -148,10 +148,19 @@ orchestrator.registerScenario("send direct message", async (s, t) => {
 
   console.log("fetch_inbox Alice:", await alice_dm.cells[0].call(ZOME, "fetch_inbox"))
 
-  inbox = await alice_dm.cells[0].call(ZOME, "inbox")
+
+
+
+  // --------------
+  // Inbox filter:
+  // --------------
+
+  inbox = await alice_dm.cells[0].call(ZOME, "inbox", "did:test:test")
   t.equal(inbox.length, 2)
-  t.deepEqual(inbox[0], message1)
-  t.deepEqual(inbox[1], message2)
+
+  inbox = await alice_dm.cells[0].call(ZOME, "inbox", "did:test:other")
+  t.equal(inbox.length, 0)
+
 
 });
 
