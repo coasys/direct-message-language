@@ -48,15 +48,24 @@ export default class DMAdapter implements DirectMessageAdapter {
     return status
   }
 
-  async sendP2P(message: Perspective): Promise<boolean> {
-    const messageExpression = this.#context.agent.createSignedExpression(message)
-    await this.#holochain.call(DNA_NICK, "direct-message", "send_p2p", messageExpression)
-    return true
+  async sendP2P(message: Perspective): Promise<PerspectiveExpression|void> {
+    try {
+      const messageExpression = this.#context.agent.createSignedExpression(message)
+      await this.#holochain.call(DNA_NICK, "direct-message", "send_p2p", messageExpression)
+      return messageExpression
+    } catch(e) {
+      console.error("Direct Message Language: Error sending p2p to", recipient_did)
+    }
   }
 
-  async sendInbox(message: Perspective) {
-    const messageExpression = this.#context.agent.createSignedExpression(message)
-    return await this.#holochain.call(DNA_NICK, "direct-message", "send_inbox", messageExpression)
+  async sendInbox(message: Perspective): Promise<PerspectiveExpression|void> {
+    try {
+      const messageExpression = this.#context.agent.createSignedExpression(message)
+      await this.#holochain.call(DNA_NICK, "direct-message", "send_inbox", messageExpression)
+      return messageExpression
+    } catch(e) {
+      console.error("Direct Message Language: Error sending to inbox of", recipient_did)
+    }
   }
 
   onlyRecipient() {
