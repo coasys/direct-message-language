@@ -1,0 +1,7 @@
+{
+    "name": "Direct Message Language",
+    "description": "Template source for personal, per-agent DM languages. Holochain based.",
+    "possibleTemplateParams": [ "recipient_did", "recipient_hc_agent_pubkey" ],
+    "sourceCodeLink": "https://github.com/perspect3vism/direct-message-language",
+    "bundle": "build/bundle.js"
+}
