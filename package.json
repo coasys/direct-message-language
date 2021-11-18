@@ -1,6 +1,6 @@
 {
   "name": "direct-message-language",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A templateable AD4M Language for personal, per-agent direct message Languages",
   "main": "index.js",
   "scripts": {

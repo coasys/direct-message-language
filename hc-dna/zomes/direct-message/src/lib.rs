@@ -61,8 +61,8 @@ entry_defs![
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
     //debug!("INIT called");
     let mut functions: GrantedFunctions = BTreeSet::new();
-    functions.insert((zome_info()?.zome_name, "recv_remote_signal".into()));
-    functions.insert((zome_info()?.zome_name, "get_status".into()));
+    functions.insert((dna_info()?.zome_names[0].clone(), "recv_remote_signal".into()));
+    functions.insert((dna_info()?.zome_names[0].clone(), "get_status".into()));
 
     //Create open cap grant to allow agents to send signals of links to each other
     create_cap_grant(CapGrantEntry {
@@ -124,7 +124,7 @@ pub fn get_status(_: ()) -> ExternResult<Option<PerspectiveExpression>> {
         }
     } else {
         // Otherwise proxy to recipient
-        match call_remote(recipient()?, zome_info()?.zome_name, "get_status".into(), None, ())? {
+        match call_remote(recipient()?, dna_info()?.zome_names[0].clone(), "get_status".into(), None, ())? {
             ZomeCallResponse::Ok(extern_io) => {
                 Ok(extern_io.decode()?)
             },
@@ -210,7 +210,7 @@ pub fn fetch_inbox(_: ()) -> ExternResult<()> {
     if agent_info()?.agent_latest_pubkey == recipient()? {
         //debug!("fetch_inbox agent");
         //debug!("agent_address: {}", agent_address);
-        for link in get_links(agent_address, Some(LinkTag::new(String::from("message"))))?.into_inner() {
+        for link in get_links(agent_address, Some(LinkTag::new(String::from("message"))))? {
             //debug!("fetch_inbox link");
             if let Some(message_entry) = get(link.target, GetOptions::latest())? {
                 //debug!("fetch_inbox link got");
