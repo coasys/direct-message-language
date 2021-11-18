@@ -81,7 +81,7 @@ fn recipient() -> ExternResult<AgentPubKey> {
         Ok(recipient.get())
     } else {
         //debug!("RECIPIENT from properties");
-        let properties = Properties::try_from(zome_info()?.properties)?;
+        let properties = Properties::try_from(dna_info()?.properties)?;
         let bytes = hex::decode(properties.recipient_hc_agent_pubkey)
             .or_else(|_| Err(WasmError::Guest(String::from("Could not hex-decode property"))))?;
         //debug!("RECIPIENT hex decoded");
