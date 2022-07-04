@@ -1,167 +1,221 @@
-import { Orchestrator, Config, InstallAgentsHapps, TransportConfigType } from "@holochain/tryorama";
-import { LinkExpression, Perspective } from "@perspect3vism/ad4m"
-import path from "path";
+import { Scenario, runScenario } from '@holochain/tryorama'
+import path from 'path'
+import test from "tape-promise/tape";
 
+const dnas = [{ path: path.join("../workdir/direct-message-language.dna") }];
+
+//@ts-ignore
 export const sleep = ms => new Promise(r => setTimeout(r, ms))
-
-const conductorConfig = Config.gen();
-const dm = path.join(__dirname, "../../workdir/direct-message-language.dna");
-const installation: InstallAgentsHapps = [
-  // agent 0
-  [
-    // happ 0
-    [dm],
-  ],
-];
 
 const ZOME = "direct-message"
 
-const orchestrator = new Orchestrator();
+//@ts-ignore
+test("send direct message", async (t) => {
+  await runScenario(async (scenario: Scenario) => {
+    let alice_last_signal
+    const [alice, bob] = await scenario.addPlayersWithHapps([
+      {
+        dnas: dnas,
+        signalHandler: (signal) => {
+          let payload = signal.data.payload
+          try {
+            let cropped = signal.data.payload.toString().substring(7)
+            //console.log("CROPPED:", cropped)
+            let parsed = JSON.parse(cropped)
+            //console.log("PARSED:", parsed)
+            payload = parsed
+          } catch(e) {
+            //console.error(e)
+          }
+          console.log("SIGNAL @ALICE:", payload)
+          alice_last_signal = payload
+        }
+      },
+      {
+        dnas: dnas,
+        signalHandler: (signal) => {
+          console.log("SIGNAL @BOB:", signal.data.payload.toString())
+        }
+      }]);
 
-orchestrator.registerScenario("send direct message", async (s, t) => {
-  const [alice, bob] = await s.players([conductorConfig, conductorConfig]);
+    await scenario.shareAllAgents();
 
-  let alice_last_signal
-  alice.setSignalHandler(signal => {
-    let payload = signal.data.payload
-    try {
-      let cropped = signal.data.payload.toString().substring(7)
-      //console.log("CROPPED:", cropped)
-      let parsed = JSON.parse(cropped)
-      //console.log("PARSED:", parsed)
-      payload = parsed
-    } catch(e) {
-      //console.error(e)
+    const alice_agent_pubkey = alice.agentPubKey
+    await alice.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "set_test_recipient", 
+      payload: alice_agent_pubkey
+    });
+    await bob.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "set_test_recipient", 
+      payload: alice_agent_pubkey
+    });
+    const stored_recipient = await bob.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "get_test_recipient"
+    });
+    //@ts-ignore
+    t.equal(stored_recipient.toString(), alice_agent_pubkey.toString())
+
+    // ----------------------------------------------
+    // ------------- Setup done ---------------------
+    // ----------------------------------------------
+
+
+      // ------------
+    // Status:
+    // ------------
+
+    const empty_status = await alice.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "get_status"
+    });
+    console.log("EMPTY status:", empty_status)
+
+    const status = {
+      author: "did:test:test",
+      timestamp: new Date().toISOString(),
+      data: {
+        links: [],
+      },
+      proof: {
+        signature: "asdfasdfasdf",
+        key: "did:test:test#primary"
+      }
     }
-    console.log("SIGNAL @ALICE:", payload)
-    alice_last_signal = payload
-  })
 
-  bob.setSignalHandler(signal => {
-    console.log("SIGNAL @BOB:", signal.data.payload.toString())
-  })
-  const [[alice_dm]] = await alice.installAgentsHapps(installation);
-  const [[bob_dm]] = await bob.installAgentsHapps(installation);
+    const link = {
+      author: "did:test:test",
+      timestamp: new Date().toISOString(),
+      data: {
+        source: "did:test:test",
+        target: "literal://string:online",
+        predicate: null,
+      },
+      proof: {
+        signature: "asdfasdfasdf",
+        key: "did:test:test#primary"
+      }
+    }
+    //@ts-ignore
+    status.data.links.push(link)
 
-  await s.shareAllNodes([alice, bob])
 
-  const alice_agent_pubkey = alice_dm.agent
-  await alice_dm.cells[0].call(ZOME, "set_test_recipient", alice_agent_pubkey);
-  await bob_dm.cells[0].call(ZOME, "set_test_recipient", alice_agent_pubkey);
-  const stored_recipient = await bob_dm.cells[0].call(ZOME, "get_test_recipient");
-  t.equal(stored_recipient.toString(), alice_agent_pubkey.toString())
-
-  // ----------------------------------------------
-  // ------------- Setup done ---------------------
-  // ----------------------------------------------
-
+    await alice.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "set_status", 
+      payload: status
+    })
+    //@ts-ignore
+    t.deepEqual(await alice.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "get_status"
+    }), status)
+    //@ts-ignore
+    t.deepEqual(await bob.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "get_status"
+    }), status)
 
     // ------------
-  // Status:
-  // ------------
+    // P2P Message:
+    // ------------
 
-  const empty_status = await alice_dm.cells[0].call(ZOME, "get_status");
-  console.log("EMPTY status:", empty_status)
-
-  const status = {
-    author: "did:test:test",
-    timestamp: new Date().toISOString(),
-    data: {
-      links: [] as LinkExpression[],
-    },
-    proof: {
-      signature: "asdfasdfasdf",
-      key: "did:test:test#primary"
+    const message1 = {
+      author: "did:test:test",
+      timestamp: new Date().toISOString(),
+      data: {
+        links: [],
+      },
+      proof: {
+        signature: "asdfasdfasdf",
+        key: "did:test:test#primary"
+      }
     }
-  }
 
-  const link = {
-    author: "did:test:test",
-    timestamp: new Date().toISOString(),
-    data: {
-      source: "did:test:test",
-      target: "literal://string:online",
-      predicate: null,
-    },
-    proof: {
-      signature: "asdfasdfasdf",
-      key: "did:test:test#primary"
+    await bob.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "send_p2p", 
+      payload: message1
+    });
+    await sleep(1000)
+
+    t.deepEqual(alice_last_signal, message1)
+
+    let inbox = await alice.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "inbox"
+    })
+    //@ts-ignore
+    t.equal(inbox.length, 1)
+    //@ts-ignore
+    t.deepEqual(inbox[0], message1)
+
+
+
+    // --------------
+    // Inbox Message:
+    // --------------
+
+    const message2 = JSON.parse(JSON.stringify(message1))
+    message2.data.links.push(link)
+
+    console.log("send_inbox:", await bob.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "send_inbox", 
+      payload: message2
+    }))
+
+    await sleep(1000)
+
+    inbox = await alice.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "inbox"
+    })
+    //@ts-ignore
+    t.equal(inbox.length, 1)
+    //@ts-ignore
+    t.deepEqual(inbox[0], message1)
+
+    let bobFetchError
+    try {
+      await bob.cells[0].callZome({
+        zome_name: ZOME, 
+        fn_name: "fetch_inbox"
+      })
+    } catch(e) {
+      bobFetchError = e
     }
-  } as LinkExpression
+    //@ts-ignore
+    t.equal(bobFetchError.data.data, 'Wasm runtime error while working with Ribosome: RuntimeError: WasmError { file: "zomes/direct-message/src/lib.rs", line: 234, error: Guest("Only recipient can fetch the inbox") }')
 
-  status.data.links.push(link)
-
-
-  await alice_dm.cells[0].call(ZOME, "set_status", status)
-  t.deepEqual(await alice_dm.cells[0].call(ZOME, "get_status"), status)
-  t.deepEqual(await bob_dm.cells[0].call(ZOME, "get_status"), status)
-
-  // ------------
-  // P2P Message:
-  // ------------
-
-  const message1 = {
-    author: "did:test:test",
-    timestamp: new Date().toISOString(),
-    data: {
-      links: [] as LinkExpression[],
-    },
-    proof: {
-      signature: "asdfasdfasdf",
-      key: "did:test:test#primary"
-    }
-  }
-
-  await bob_dm.cells[0].call(ZOME, "send_p2p", message1);
-  await sleep(1000)
-
-  t.deepEqual(alice_last_signal, message1)
-
-  let inbox = await alice_dm.cells[0].call(ZOME, "inbox")
-  t.equal(inbox.length, 1)
-  t.deepEqual(inbox[0], message1)
-
-
-
-  // --------------
-  // Inbox Message:
-  // --------------
-
-  const message2 = JSON.parse(JSON.stringify(message1))
-  message2.data.links.push(link)
-
-  console.log("send_inbox:", await bob_dm.cells[0].call(ZOME, "send_inbox", message2))
-
-  await sleep(1000)
-
-  inbox = await alice_dm.cells[0].call(ZOME, "inbox")
-  t.equal(inbox.length, 1)
-  t.deepEqual(inbox[0], message1)
-
-  let bobFetchError
-  try {
-    await bob_dm.cells[0].call(ZOME, "fetch_inbox")
-  } catch(e) {
-    bobFetchError = e
-  }
-  t.equal(bobFetchError.data.data, 'Wasm error while working with Ribosome: Guest("Only recipient can fetch the inbox")')
-
-  console.log("fetch_inbox Alice:", await alice_dm.cells[0].call(ZOME, "fetch_inbox"))
+    console.log("fetch_inbox Alice:", await alice.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "fetch_inbox"
+    }))
 
 
 
 
-  // --------------
-  // Inbox filter:
-  // --------------
+    // --------------
+    // Inbox filter:
+    // --------------
 
-  inbox = await alice_dm.cells[0].call(ZOME, "inbox", "did:test:test")
-  t.equal(inbox.length, 2)
+    inbox = await alice.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "inbox", 
+      payload: "did:test:test"
+    })
+    //@ts-ignore
+    t.equal(inbox.length, 2)
 
-  inbox = await alice_dm.cells[0].call(ZOME, "inbox", "did:test:other")
-  t.equal(inbox.length, 0)
-
-
+    inbox = await alice.cells[0].callZome({
+      zome_name: ZOME, 
+      fn_name: "inbox", 
+      payload: "did:test:other"
+    })
+    //@ts-ignore
+    t.equal(inbox.length, 0)
+  })
 });
-
-orchestrator.run();
