@@ -1,6 +1,7 @@
 import { DirectMessageAdapter, HolochainLanguageDelegate, LanguageContext, MessageCallback, Perspective, PerspectiveExpression, StatusCallback } from "@perspect3vism/ad4m";
 import { DNA, DNA_NICK } from "./dna";
 
+//@ad4m-template-variable
 const recipient_did = "<not templated yet>"
 
 export const sleep = ms => new Promise(r => setTimeout(r, ms))
