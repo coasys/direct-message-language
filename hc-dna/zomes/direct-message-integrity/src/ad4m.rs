@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use holochain_deterministic_integrity::prelude::*;
+use hdi::prelude::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize, SerializedBytes)]
 pub struct Link {
