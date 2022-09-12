@@ -1,8 +1,8 @@
-import { Scenario, runScenario } from '@holochain/tryorama'
+import { Scenario, runScenario, Dna } from '@holochain/tryorama'
 import path from 'path'
 import test from "tape-promise/tape";
 
-const dnas = [{ path: path.join("../workdir/direct-message-language.dna") }];
+const dnas: Dna[] = [{ source: {path: path.join("../workdir/direct-message-language.dna") } }];
 
 //@ts-ignore
 export const sleep = ms => new Promise(r => setTimeout(r, ms))
