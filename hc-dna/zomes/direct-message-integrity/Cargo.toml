@@ -11,7 +11,7 @@ name = "direct_message_integrity"
 [dependencies]
 derive_more = "0"
 serde = "1"
-chrono = { version = "0.4", features=["serde"] }
+chrono = { version = "0.4.22", default-features = false, features = ["clock", "std", "oldtime", "serde"] }
 
-hdi = "0.0.15"
+hdi = "0.1.1"
 holo_hash = "0.0.31"
