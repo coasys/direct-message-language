@@ -9,8 +9,10 @@ pub fn set_test_recipient(recipient: AgentPubKey) -> ExternResult<()> {
 
 #[hdk_extern]
 pub fn get_test_recipient(_: ()) -> ExternResult<Option<Recipient>> {
-    let app_entry = AppEntryType::new(3.into(), 0.into(), EntryVisibility::Private);
-    let filter = QueryFilter::new().entry_type(EntryType::App(app_entry)).include_entries(true);
+    let app_entry = AppEntryDef::new(3.into(), 0.into(), EntryVisibility::Private);
+    let filter = QueryFilter::new()
+        .entry_type(EntryType::App(app_entry))
+        .include_entries(true);
     if let Some(element) = query(filter)?.pop() {
         let recipient = Recipient::try_from(element)?;
         return Ok(Some(recipient));

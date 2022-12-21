@@ -188,7 +188,7 @@ test("send direct message", async (t) => {
       bobFetchError = e
     }
     //@ts-ignore
-    t.equal(bobFetchError.data.data, 'Wasm runtime error while working with Ribosome: RuntimeError: WasmError { file: "zomes/direct-message/src/lib.rs", line: 234, error: Guest("Only recipient can fetch the inbox") }')
+    t.equal(bobFetchError.data.data, 'Wasm runtime error while working with Ribosome: RuntimeError: WasmError { file: "zomes/direct-message/src/lib.rs", line: 236, error: Guest("Only recipient can fetch the inbox") }')
 
     console.log("fetch_inbox Alice:", await alice.cells[0].callZome({
       zome_name: ZOME, 

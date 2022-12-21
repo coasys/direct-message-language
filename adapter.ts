@@ -20,19 +20,35 @@ export default class DMAdapter implements DirectMessageAdapter {
 
   async init() {
     const that = this
-    await this.#holochain.registerDNAs([{ file: DNA, nick: DNA_NICK }], (signal) => {
-      console.debug("DM Language got HC signal:", signal)
-      let payload = signal.data.payload
-      try {
-        let string = signal.data.payload.toString()
-        let cropped = string.substring(string.indexOf("{"))
-        let parsed = JSON.parse(cropped)
-        payload = parsed
-      } catch(e) {
-        console.error(e)
-      }
-      that.#messageCallbacks.forEach(cb => cb(payload))
-    });
+    //@ts-ignore
+    await this.#holochain.registerDNAs(
+      [
+        { 
+          file: DNA, 
+          nick: DNA_NICK, 
+          //@ts-ignore
+          zomeCalls: [
+            ["direct-message", "send_p2p"],
+            ["direct-message", "send_inbox"],
+            ["direct-message", "set_status"],
+            ["direct-message", "get_status"],
+            ["direct-message", "fetch_inbox"],
+            ["direct-message", "inbox"],
+          ] 
+        }
+      ], (signal) => {
+        console.debug("DM Language got HC signal:", signal)
+        let payload = signal.data.payload
+        try {
+          let string = signal.data.payload.toString()
+          let cropped = string.substring(string.indexOf("{"))
+          let parsed = JSON.parse(cropped)
+          payload = parsed
+        } catch(e) {
+          console.error(e)
+        }
+        that.#messageCallbacks.forEach(cb => cb(payload))
+      });
   }
 
   recipient(): string{

@@ -76,7 +76,7 @@ pub fn get_status(_: ()) -> ExternResult<Option<PerspectiveExpression>> {
         // (either from local ad4m-executor or via remote_call)
         // we retrieve the latest status entry from source chain
         let mut filter = QueryFilter::new();
-        filter.entry_type = Some(EntryType::App(AppEntryType::new(
+        filter.entry_type = Some(EntryType::App(AppEntryDef::new(
             0.into(),
             0.into(),
             EntryVisibility::Private,
@@ -143,7 +143,7 @@ fn recv_remote_signal(signal: SerializedBytes) -> ExternResult<()> {
 fn inbox(did_filter: Option<String>) -> ExternResult<Vec<PerspectiveExpression>> {
     //debug!("INBOX({:?})", did_filter);
     let mut filter = QueryFilter::new();
-    filter.entry_type = Some(EntryType::App(AppEntryType::new(
+    filter.entry_type = Some(EntryType::App(AppEntryDef::new(
         1.into(),
         0.into(),
         EntryVisibility::Private,
@@ -152,30 +152,25 @@ fn inbox(did_filter: Option<String>) -> ExternResult<Vec<PerspectiveExpression>>
     Ok(query(filter)?
         .into_iter()
         .map(|val| {
-            val.entry().to_app_option::<PerspectiveExpression>().map_err(|err| {
-                wasm_error!(WasmErrorInner::Host(err.to_string()))
-            })?.ok_or(
-                wasm_error!(WasmErrorInner::Host(
+            val.entry()
+                .to_app_option::<PerspectiveExpression>()
+                .map_err(|err| wasm_error!(WasmErrorInner::Host(err.to_string())))?
+                .ok_or(wasm_error!(WasmErrorInner::Host(
                     "Expected entry to contain data".to_string()
-                ))
-            )
+                )))
         })
-        .filter_map(|m| {
-            match &did_filter {
-                None => Some(m),
-                Some(did) => {
-                    match m.clone() {
-                        Ok(pers) => {
-                            if &pers.author == did {
-                                Some(m)
-                            } else {
-                                None
-                            }
-                        },
-                        Err(_err) => None
+        .filter_map(|m| match &did_filter {
+            None => Some(m),
+            Some(did) => match m.clone() {
+                Ok(pers) => {
+                    if &pers.author == did {
+                        Some(m)
+                    } else {
+                        None
                     }
                 }
-            }
+                Err(_err) => None,
+            },
         })
         .collect::<Result<Vec<_>, _>>()?)
 }
@@ -183,9 +178,11 @@ fn inbox(did_filter: Option<String>) -> ExternResult<Vec<PerspectiveExpression>>
 #[hdk_extern]
 pub fn send_p2p(message: PerspectiveExpression) -> ExternResult<()> {
     //debug!("SENDING MESSAGE...");
-    remote_signal(SerializedBytes::try_from(message).map_err(|err| {
-        wasm_error!(WasmErrorInner::Host(err.to_string()))
-    })?, vec![recipient()?.0])
+    remote_signal(
+        SerializedBytes::try_from(message)
+            .map_err(|err| wasm_error!(WasmErrorInner::Host(err.to_string())))?,
+        vec![recipient()?.0],
+    )
 }
 
 #[hdk_extern]
@@ -217,7 +214,12 @@ pub fn fetch_inbox(_: ()) -> ExternResult<()> {
             Some(LinkTag::new(String::from("message"))),
         )? {
             //debug!("fetch_inbox link");
-            if let Some(message_entry) = get(link.target, GetOptions::latest())? {
+            if let Some(message_entry) = get(
+                link.target
+                    .into_entry_hash()
+                    .expect("Could not get entry hash"),
+                GetOptions::latest(),
+            )? {
                 //debug!("fetch_inbox link got");
                 let header_address = message_entry.action_address().clone();
                 let public_message = PublicMessage::try_from(message_entry)?;
