@@ -1,6 +1,7 @@
 import { Scenario, runScenario, Dna } from '@holochain/tryorama'
 import path from 'path'
 import test from "tape-promise/tape";
+import { resolve } from "path";
 
 const dnas: Dna[] = [{ source: {path: path.join("../workdir/direct-message-language.dna") } }];
 
@@ -13,32 +14,60 @@ const ZOME = "direct-message"
 test("send direct message", async (t) => {
   await runScenario(async (scenario: Scenario) => {
     let alice_last_signal
-    const [alice, bob] = await scenario.addPlayersWithHapps([
+    const [alice, bob] = await scenario.addPlayersWithApps([
       {
-        dnas: dnas,
-        signalHandler: (signal) => {
-          let payload = signal.data.payload
-          try {
-            let cropped = signal.data.payload.toString().substring(7)
-            //console.log("CROPPED:", cropped)
-            let parsed = JSON.parse(cropped)
-            //console.log("PARSED:", parsed)
-            payload = parsed
-          } catch(e) {
-            //console.error(e)
-          }
-          console.log("SIGNAL @ALICE:", payload)
-          alice_last_signal = payload
+        appBundleSource:{
+          bundle: {
+              manifest: {
+                  manifest_version: "1",
+                  name: ZOME,
+                  roles: [{
+                      name: "main",
+                      dna: {
+                          //@ts-ignore
+                          path: resolve(dnas[0].source.path)
+                      }
+                  }]
+              },
+              resources: {}
+            }
         }
       },
       {
-        dnas: dnas,
-        signalHandler: (signal) => {
-          console.log("SIGNAL @BOB:", signal.data.payload.toString())
+        appBundleSource:{
+          bundle: {
+              manifest: {
+                  manifest_version: "1",
+                  name: ZOME,
+                  roles: [{
+                      name: "main",
+                      dna: {
+                          //@ts-ignore
+                          path: resolve(dnas[0].source.path)
+                      }
+                  }]
+              },
+              resources: {}
+            }
         }
-      }]);
+    }]);
+    alice.conductor.appWs().on("signal", (signal) => {
+      let payload = signal.payload
+      try {
+        let cropped = signal.payload.toString().substring(7)
+        console.log("CROPPED:", cropped)
+        let parsed = JSON.parse(cropped)
+        console.log("PARSED:", parsed)
+        payload = parsed
+      } catch(e) {
+        //console.error(e)
+      }
+      console.log("SIGNAL @ALICE:", payload)
+      alice_last_signal = payload
+    });
 
     await scenario.shareAllAgents();
+    await sleep(1000);
 
     const alice_agent_pubkey = alice.agentPubKey
     await alice.cells[0].callZome({
@@ -62,8 +91,7 @@ test("send direct message", async (t) => {
     // ------------- Setup done ---------------------
     // ----------------------------------------------
 
-
-      // ------------
+    // ------------
     // Status:
     // ------------
 
@@ -152,8 +180,6 @@ test("send direct message", async (t) => {
     //@ts-ignore
     t.deepEqual(inbox[0], message1)
 
-
-
     // --------------
     // Inbox Message:
     // --------------
@@ -188,15 +214,12 @@ test("send direct message", async (t) => {
       bobFetchError = e
     }
     //@ts-ignore
-    t.equal(bobFetchError.data.data, 'Wasm runtime error while working with Ribosome: RuntimeError: WasmError { file: "zomes/direct-message/src/lib.rs", line: 236, error: Guest("Only recipient can fetch the inbox") }')
+    t.equal(bobFetchError.data.data, 'Wasm runtime error while working with Ribosome: RuntimeError: WasmError { file: "zomes/direct-message/src/lib.rs", line: 237, error: Guest("Only recipient can fetch the inbox") }')
 
     console.log("fetch_inbox Alice:", await alice.cells[0].callZome({
       zome_name: ZOME, 
       fn_name: "fetch_inbox"
     }))
-
-
-
 
     // --------------
     // Inbox filter:
@@ -217,5 +240,7 @@ test("send direct message", async (t) => {
     })
     //@ts-ignore
     t.equal(inbox.length, 0)
+
+    await scenario.cleanUp();
   })
 });

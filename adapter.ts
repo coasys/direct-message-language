@@ -1,4 +1,4 @@
-import { DirectMessageAdapter, HolochainLanguageDelegate, LanguageContext, MessageCallback, Perspective, PerspectiveExpression, StatusCallback } from "@perspect3vism/ad4m";
+import { DirectMessageAdapter, HolochainLanguageDelegate, LanguageContext, MessageCallback, Perspective, PerspectiveExpression } from "@perspect3vism/ad4m";
 import { DNA, DNA_NICK } from "./dna";
 
 //@ad4m-template-variable
@@ -38,9 +38,9 @@ export default class DMAdapter implements DirectMessageAdapter {
         }
       ], (signal) => {
         console.debug("DM Language got HC signal:", signal)
-        let payload = signal.data.payload
+        let payload = signal.payload
         try {
-          let string = signal.data.payload.toString()
+          let string = signal.payload.toString()
           let cropped = string.substring(string.indexOf("{"))
           let parsed = JSON.parse(cropped)
           payload = parsed

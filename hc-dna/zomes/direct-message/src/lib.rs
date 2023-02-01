@@ -10,19 +10,20 @@ use test_inspect::get_test_recipient;
 
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
-    let mut functions: GrantedFunctions = BTreeSet::new();
+    let mut functions = BTreeSet::new();
     functions.insert((
         ZomeName::from("direct-message"),
         "recv_remote_signal".into(),
     ));
     functions.insert((ZomeName::from("direct-message"), "get_status".into()));
+    let granted_functions: GrantedFunctions = GrantedFunctions::Listed(functions);
 
     //Create open cap grant to allow agents to send signals of links to each other
     create_cap_grant(CapGrantEntry {
         tag: "".into(),
         // empty access converts to unrestricted
         access: ().into(),
-        functions,
+        functions: granted_functions,
     })?;
     Ok(InitCallbackResult::Pass)
 }
@@ -100,9 +101,9 @@ pub fn get_status(_: ()) -> ExternResult<Option<PerspectiveExpression>> {
             ZomeCallResponse::Ok(extern_io) => Ok(extern_io
                 .decode()
                 .map_err(|err| wasm_error!(WasmErrorInner::Host(err.to_string())))?),
-            ZomeCallResponse::Unauthorized(_, _, _, _) => Err(wasm_error!(WasmErrorInner::Host(
-                "Unauthorized error".to_string()
-            ))),
+            ZomeCallResponse::Unauthorized(_, _, _, _, _) => Err(wasm_error!(
+                WasmErrorInner::Host("Unauthorized error".to_string())
+            )),
             ZomeCallResponse::NetworkError(error) => Err(wasm_error!(WasmErrorInner::Host(error))),
             ZomeCallResponse::CountersigningSession(session) => {
                 Err(wasm_error!(WasmErrorInner::Host(session)))
